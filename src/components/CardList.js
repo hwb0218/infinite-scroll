@@ -1,57 +1,40 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import Card from "./Card";
+import useObserver from "../hooks/useObserver";
+
+const API = 'https://jsonplaceholder.typicode.com';
 
 const CardList = () => {
     const [cardList, setCardList] = useState([]);
-    const [isVisible, setIsVisible] = useState(false);
+    const [page, setPage] = useState(1);
     const target = useRef(null);
+    const isIntersecting = useObserver(target);
 
-    const onIntersect = ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-    }
-
-    const options = {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.2
-    }
+    const getCardData = useCallback(async (page) => {
+        try {
+            const fetchCardData = await fetch(`${API}/comments?_page=${page}&_limit=10`);
+            const response = await fetchCardData.json();
+            setCardList([...cardList, ...response]);
+        } catch (err) {
+            console.log(err)
+        }
+    }, [cardList]);
 
     useEffect(() => {
-        fetch('https://jsonplaceholder.typicode.com/comments?_page=1&_limit=10')
-            .then((response) => response.json())
-            .then((data) => setCardList(data));
+        getCardData(page);
+    }, [page]);
 
-        const observer = new IntersectionObserver(onIntersect, options);
-        if (target.current) observer.observe(target.current);
-
-        return () => {
-            if(target.current) observer.unobserve(target.current);
-        }
-    }, [setCardList, target, options]);
+    useEffect(() => {
+        if (isIntersecting) setPage((page) => page + 1);
+    }, [isIntersecting]);
 
     return (
             <CardContainer>
-                <div style={{ position: 'fixed'}}>{isVisible ? 'IN VIEWPORT' : 'NOT IN VIEWPORT'}</div>
-                {cardList.map((data, index) => {
-                    const lastCard = index === cardList.length - 1;
-                    return (
-                        <Card ref={lastCard ? target : null} key={data.id}>
-                            <div>
-                                <span>Comment id</span>
-                                <span>{data.id}</span>
-                            </div>
-                            <EmailWrapper>
-                                <span>Email</span>
-                                <span>{data.email}</span>
-                            </EmailWrapper>
-                            <div>
-                                <p>Comment</p>
-                                <div>{data.body}</div>
-                            </div>
-                        </Card>
-                    );
-                })}
+                {cardList.map((card) =>
+                    <Card cardData={card} key={card.id} />
+                )}
+                <div ref={target} />
             </CardContainer>
     );
 };
@@ -61,22 +44,6 @@ const CardContainer = styled.div`
   flex-direction: column;
   align-items: center;
   padding: 33px;
-`;
-
-const Card = styled.div`
-  width: 500px;
-  padding: 20px;
-  border: 0.5px solid #CED4D4;
-  border-radius: 20px;
-  background: #F8F9FA;
-  
-  & + & {
-    margin-top: 14px;
-  } 
-`;
-
-const EmailWrapper = styled.div`
-  margin: 10px 0;
 `;
 
 export default CardList;
