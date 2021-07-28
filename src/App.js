@@ -3,9 +3,9 @@ import CardList from "./components/CardList";
 
 const App = () => {
     return (
-        <div>
+        <>
             <CardList />
-        </div>
+        </>
     );
 };
 
